@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="ScaleView">
+        <attr name="lineMarginBottom" format="dimension" />
+
+        <attr name="lineColor" format="color" />
+        <attr name="lineWidth" format="dimension" />
+        <attr name="lineSpaceWidth" format="dimension" />
+        <attr name="lineTextColor" format="color" />
+        <attr name="lineTextSize" format="dimension" />
+
+        <attr name="lineHorizontalEnable" format="boolean" />
+        <attr name="lineHorizontalColor" format="color" />
+        <attr name="lineHorizontalHeight" format="dimension" />
+
+        <attr name="pointerLineEnable" format="boolean" />
+        <attr name="pointerLineTriangleEnable" format="boolean" />
+        <attr name="pointerLineColor" format="color" />
+        <attr name="pointerLineWidth" format="dimension" />
+        <attr name="pointerLineTextColor" format="color" />
+        <attr name="pointerLineTextSize" format="dimension" />
+    </declare-styleable>
+</resources>
