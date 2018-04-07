@@ -32,14 +32,10 @@ public class QScaleView extends View {
     private boolean isScaleLineExtendEnable; //刻度尺两侧空白区域的刻度线是否显示
     private int mScaleLineColor; //刻度线的颜色
     private float mScaleLineWidth; //刻度线的宽度
-    private float mScaleLineSpaceWidth; //刻度间的宽度
     private int mScaleLineTextColor; //刻度值的颜色
     private float mScaleLineTextSize; //刻度值字体大小
-
-    private float mMaxValue; //最大刻度值
-    private float mMiniValue; //最小刻度值
-    private float mPerValue; //每个刻度的差值
-    private float mSelectorValue; //当前选中的刻度
+    private float mScaleLineSpaceWidth; //刻度线间的宽度
+    private int mScaleLineSubSpaceCount; //刻度线间的子区间数
 
     private boolean isMarkLineEnable; //标线是否显示
     private boolean isMarkLineTrayEnable; //标线顶部托盘是否显示
@@ -49,23 +45,25 @@ public class QScaleView extends View {
     private int mMarkLineTextColor; //标线值的颜色
     private float mMarkLineTextSize; //标线值字体大小
 
-    private int mTotalLine; //刻度线的条数
-    private int mMaxOffset;
-    private float mOffset;
-    private int mLastX, mMove;
-
     private Paint mBaseLinePaint; //基线画笔
     private Paint mScaleLinePaint; //刻度线画笔
     private Paint mScaleLineTextPaint; //刻度值画笔
     private Paint mMarkLinePaint; //标线画笔
     private Paint mMarkLineTextPaint; //标线值画笔
 
+    private List<String> mScaleValues; //全部的刻度值
+    private int mScaleLineCount; //刻度线总条数
+    private int mLastX; //上次移动到的x坐标
+    private int mMove;
+    private float mOffset; //偏移量
+    private float mMaxOffset; //最大偏移量
+    private int mSelectedPosition; //选中刻度的位置
+
     private Scroller mScroller;
-    private VelocityTracker mVelocityTracker; //速度追踪
     private int mMiniVelocity; //临界速度
+    private VelocityTracker mVelocityTracker; //速度追踪
 
     private OnScaleChangeListener mListener;
-    private List<String> mScaleValues; //全部刻度值
 
     public QScaleView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -83,9 +81,10 @@ public class QScaleView extends View {
             isScaleLineExtendEnable = typedArray.getBoolean(R.styleable.ScaleView_scaleLineExtendEnable, false);
             mScaleLineColor = typedArray.getColor(R.styleable.ScaleView_scaleLineColor, Color.parseColor("#FFCFCFCF"));
             mScaleLineWidth = typedArray.getDimension(R.styleable.ScaleView_scaleLineWidth, 1);
-            mScaleLineSpaceWidth = typedArray.getDimension(R.styleable.ScaleView_scaleLineSpaceWidth, 10);
             mScaleLineTextColor = typedArray.getColor(R.styleable.ScaleView_scaleLineTextColor, Color.parseColor("#FFCFCFCF"));
             mScaleLineTextSize = typedArray.getDimension(R.styleable.ScaleView_scaleLineTextSize, 18);
+            mScaleLineSpaceWidth = typedArray.getDimension(R.styleable.ScaleView_scaleLineSpaceWidth, 10);
+            mScaleLineSubSpaceCount = typedArray.getInteger(R.styleable.ScaleView_scaleLineSubSpaceCount, 5);
 
             isMarkLineEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineEnable, true);
             isMarkLineTrayEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineTrayEnable, true);
@@ -121,35 +120,6 @@ public class QScaleView extends View {
             //防止OOM
             typedArray.recycle();
         }
-    }
-
-    /**
-     * 外部调用设置刻度值及初始位置
-     *
-     * @param values   所有的刻度值
-     * @param position 默认选中刻度的位置
-     */
-    public void setScaleValue(List<String> values, int position) {
-        this.mScaleValues = values;
-        this.mSelectorValue = toFloat(values.get(position));
-        this.mMaxValue = toFloat(values.get(values.size() - 1));
-        this.mMiniValue = toFloat(values.get(0));
-        this.mTotalLine = values.size();
-
-        float per = (mMaxValue - mMiniValue) / (mTotalLine - 1);
-        this.mPerValue = (int) (per * 10.0f);
-
-        mMaxOffset = (int) (-(mTotalLine - 1) * mScaleLineSpaceWidth);
-        mOffset = (mMiniValue - mSelectorValue) / mPerValue * mScaleLineSpaceWidth * 10;
-
-        invalidate();
-    }
-
-    private float toFloat(String value) {
-        if (!TextUtils.isEmpty(value)) {
-            return Float.valueOf(value);
-        }
-        return 0.0f;
     }
 
     @Override
@@ -188,29 +158,28 @@ public class QScaleView extends View {
      */
     private void drawScaleLines(Canvas canvas) {
         int srcPointX = mScaleViewWidth / 2;
-        float left = srcPointX + mOffset;
-        if (isScaleLineExtendEnable) {
-            for (int i = 0; i < left; i += mScaleLineSpaceWidth / 5) {
-                canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
-            }
-        }
 
-        for (int i = 0; i < mTotalLine; i++) {
-            left = srcPointX + mOffset + i * mScaleLineSpaceWidth;
-            if (i != mTotalLine - 1) {
-                for (int j = 1; j < 5; j++) {
-                    float lef = left + j * mScaleLineSpaceWidth / 5;
-                    canvas.drawLine(lef, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, lef, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
+        for (int i = 0; i < mScaleLineCount; i++) {
+            float offsetX = srcPointX + mOffset + i * mScaleLineSpaceWidth;
+            if (i != mScaleLineCount - 1) {
+                for (int j = 1; j < mScaleLineSubSpaceCount; j++) {
+                    float x = offsetX + j * mScaleLineSpaceWidth / mScaleLineSubSpaceCount;
+                    canvas.drawLine(x, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, x, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
                 }
             }
-            canvas.drawLine(left, (mScaleViewHeight - mBaseLineMarginBottom) * 3 / 4, left, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
-            if (left != srcPointX || isMarkLineRetainScaleLineValueEnable) {
-                canvas.drawText(mScaleValues.get(i), left - mScaleLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mBaseLineMarginBottom) * 7 / 10, mScaleLineTextPaint);
+            canvas.drawLine(offsetX, (mScaleViewHeight - mBaseLineMarginBottom) * 3 / 4, offsetX, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
+            if (offsetX != srcPointX || isMarkLineRetainScaleLineValueEnable) {
+                canvas.drawText(mScaleValues.get(i), offsetX - mScaleLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mBaseLineMarginBottom) * 7 / 10, mScaleLineTextPaint);
             }
         }
 
         if (isScaleLineExtendEnable) {
-            for (int i = (int) left; i < mScaleViewWidth; i += mScaleLineSpaceWidth / 5) {
+            float offsetX = srcPointX + mOffset;
+            for (int i = (int) offsetX - 1; i > 0; i -= mScaleLineSpaceWidth / 5) {
+                canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
+            }
+            offsetX = srcPointX + mOffset + (mScaleLineCount - 1) * mScaleLineSpaceWidth;
+            for (int i = (int) offsetX + 1; i < mScaleViewWidth; i += mScaleLineSpaceWidth / 5) {
                 canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
             }
         }
@@ -222,16 +191,12 @@ public class QScaleView extends View {
      * @param canvas
      */
     private void drawMarkLine(Canvas canvas) {
-        String value = String.valueOf(mSelectorValue);
+        String value = String.valueOf(getSelectedValue());
         if (!isMarkLineEnable || TextUtils.isEmpty(value)) {
             return;
         }
 
-        if (value.contains(".")) {
-            value = value.split("\\.")[0];
-        }
         canvas.drawText(value, mScaleViewWidth / 2 - mMarkLineTextPaint.measureText(value) / 2, mScaleViewHeight / 5, mMarkLineTextPaint);
-
         if (isMarkLineTrayEnable) {
             Path path = new Path();
             path.moveTo(mScaleViewWidth / 2 - mScaleLineSpaceWidth / 8, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10);
@@ -240,8 +205,22 @@ public class QScaleView extends View {
             path.close();
             canvas.drawPath(path, mMarkLinePaint);
         }
-
         canvas.drawLine(mScaleViewWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mScaleViewWidth / 2, mScaleViewHeight, mMarkLinePaint);
+    }
+
+    @Override
+    public void computeScroll() {
+        super.computeScroll();
+        if (mScroller.computeScrollOffset()) {
+            if (mScroller.getCurrX() == mScroller.getFinalX()) {
+                moveEnd();
+            } else {
+                int xPosition = mScroller.getCurrX();
+                mMove = (mLastX - xPosition);
+                moving();
+                mLastX = xPosition;
+            }
+        }
     }
 
     @Override
@@ -260,22 +239,21 @@ public class QScaleView extends View {
                 break;
             case MotionEvent.ACTION_MOVE:
                 mMove = (mLastX - xPosition);
-                changeMoveAndValue();
+                moving();
+                mLastX = xPosition;
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                countMoveEnd();
-                countVelocityTracker();
+                moveEnd();
+                calculateVelocityTracker();
                 return false;
             default:
                 break;
         }
-        mLastX = xPosition;
-
         return true;
     }
 
-    private void changeMoveAndValue() {
+    private void moving() {
         mOffset -= mMove;
         if (mOffset <= mMaxOffset) {
             mOffset = mMaxOffset;
@@ -286,13 +264,13 @@ public class QScaleView extends View {
             mMove = 0;
             mScroller.forceFinished(true);
         }
-        mSelectorValue = mMiniValue + Math.round(Math.abs(mOffset) * 1.0f / mScaleLineSpaceWidth) * mPerValue / 10.0f;
+        mSelectedPosition = Math.round(Math.abs(mOffset) / mScaleLineSpaceWidth);
 
-        notifyValueChange();
+        notifyScaleChange();
         postInvalidate();
     }
 
-    private void countMoveEnd() {
+    private void moveEnd() {
         mOffset -= mMove;
         if (mOffset <= mMaxOffset) {
             mOffset = mMaxOffset;
@@ -303,29 +281,24 @@ public class QScaleView extends View {
         mLastX = 0;
         mMove = 0;
 
-        mSelectorValue = mMiniValue + Math.round(Math.abs(mOffset) * 1.0f / mScaleLineSpaceWidth) * mPerValue / 10.0f;
-        mOffset = (mMiniValue - mSelectorValue) * 10.0f / mPerValue * mScaleLineSpaceWidth;
+        mSelectedPosition = Math.round(Math.abs(mOffset) / mScaleLineSpaceWidth);
+        mOffset = -mSelectedPosition * mScaleLineSpaceWidth;
 
-        notifyValueChange();
+        notifyScaleChange();
         postInvalidate();
     }
 
-    private void notifyValueChange() {
-        if (null != mListener) {
-            String value = String.valueOf(mSelectorValue);
+    private void notifyScaleChange() {
+        if (mListener != null) {
+            String value = String.valueOf(getSelectedValue());
             if (TextUtils.isEmpty(value)) {
                 return;
             }
-
-            if (value.contains(".")) {
-                mListener.onScaleChange(value.split("\\.")[0]);
-            } else {
-                mListener.onScaleChange(value);
-            }
+            mListener.onScaleChange(value, mSelectedPosition);
         }
     }
 
-    private void countVelocityTracker() {
+    private void calculateVelocityTracker() {
         mVelocityTracker.computeCurrentVelocity(1000);
         float xVelocity = mVelocityTracker.getXVelocity();
         if (Math.abs(xVelocity) > mMiniVelocity) {
@@ -335,19 +308,40 @@ public class QScaleView extends View {
         }
     }
 
-    @Override
-    public void computeScroll() {
-        super.computeScroll();
-        if (mScroller.computeScrollOffset()) {
-            if (mScroller.getCurrX() == mScroller.getFinalX()) {
-                countMoveEnd();
-            } else {
-                int xPosition = mScroller.getCurrX();
-                mMove = (mLastX - xPosition);
-                changeMoveAndValue();
-                mLastX = xPosition;
+    /**
+     * 获取选中的刻度值
+     *
+     * @return
+     */
+    private String getSelectedValue() {
+        if (mScaleValues != null && mScaleValues.size() > mSelectedPosition) {
+            String value = mScaleValues.get(mSelectedPosition);
+            if (TextUtils.isEmpty(value)) {
+                return "";
             }
+
+            if (value.contains(".")) {
+                value = value.split("\\.")[0];
+            }
+            return value;
         }
+        return "";
+    }
+
+    /**
+     * 初始化全部的刻度值及默认位置
+     *
+     * @param values   全部的刻度值
+     * @param position 默认位置
+     */
+    public void setScaleInfo(List<String> values, int position) {
+        this.mScaleValues = values;
+        this.mScaleLineCount = values.size();
+        this.mSelectedPosition = position;
+        this.mOffset = -position * mScaleLineSpaceWidth;
+        this.mMaxOffset = -(mScaleLineCount - 1) * mScaleLineSpaceWidth;
+
+        invalidate();
     }
 
     public void setOnScaleChangeListener(OnScaleChangeListener listener) {
@@ -355,6 +349,6 @@ public class QScaleView extends View {
     }
 
     public interface OnScaleChangeListener {
-        void onScaleChange(String scale);
+        void onScaleChange(String scale, int position);
     }
 }

@@ -10,9 +10,10 @@
         <attr name="scaleLineExtendEnable" format="boolean" />
         <attr name="scaleLineColor" format="color" />
         <attr name="scaleLineWidth" format="dimension" />
-        <attr name="scaleLineSpaceWidth" format="dimension" />
         <attr name="scaleLineTextColor" format="color" />
         <attr name="scaleLineTextSize" format="dimension" />
+        <attr name="scaleLineSpaceWidth" format="dimension" />
+        <attr name="scaleLineSubSpaceCount" format="integer" />
 
         <attr name="markLineEnable" format="boolean" />
         <attr name="markLineTrayEnable" format="boolean" />

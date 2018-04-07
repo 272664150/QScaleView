@@ -25,6 +25,7 @@
         app:scaleLineColor="#FFCFCFCF"
         app:scaleLineExtendEnable="true"
         app:scaleLineSpaceWidth="50dp"
+        app:scaleLineSubSpaceCount="5"
         app:scaleLineTextColor="#FFCFCFCF"
         app:scaleLineTextSize="18sp"
         app:scaleLineWidth="1dp" />

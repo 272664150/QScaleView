@@ -31,11 +31,11 @@ public class MainActivity extends AppCompatActivity {
         list.add(10 + "");
         list.add(8 + "");
 
-        scaleView.setScaleValue(list, 0);
+        scaleView.setScaleInfo(list, 0);
         scaleView.setOnScaleChangeListener(new QScaleView.OnScaleChangeListener() {
             @Override
-            public void onScaleChange(String scale) {
-                Log.e("QTest", "scale:  " + scale);
+            public void onScaleChange(String scale, int position) {
+                Log.e("QTest", "scale:  " + scale + "  position:  " + position);
             }
         });
     }
