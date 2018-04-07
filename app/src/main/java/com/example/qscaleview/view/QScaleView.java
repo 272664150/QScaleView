@@ -24,48 +24,48 @@ public class QScaleView extends View {
     private int mScaleViewWidth; //view的宽度
     private int mScaleViewHeight; //view的高度
 
-    private float mLineMarginBottom; //与底部的间距
+    private boolean isBaseLineEnable; //基线是否显示
+    private int mBaseLineColor; //基线的颜色
+    private float mBaseLineHeight; //基线的高度
+    private float mBaseLineMarginBottom; //基线与底部的间距
 
-    private int mLineColor; //刻度线的颜色
-    private float mLineWidth; //刻度线的宽度
-    private float mLineSpaceWidth; //刻度间的宽度
-    private int mLineTextColor; //刻度值的颜色
-    private float mLineTextSize; //刻度值字体大小
+    private boolean isScaleLineExtendEnable; //刻度尺两侧空白区域的刻度线是否显示
+    private int mScaleLineColor; //刻度线的颜色
+    private float mScaleLineWidth; //刻度线的宽度
+    private float mScaleLineSpaceWidth; //刻度间的宽度
+    private int mScaleLineTextColor; //刻度值的颜色
+    private float mScaleLineTextSize; //刻度值字体大小
 
     private float mMaxValue; //最大刻度值
     private float mMiniValue; //最小刻度值
     private float mPerValue; //每个刻度的差值
     private float mSelectorValue; //当前选中的刻度
 
-    private boolean isLineHorizontalEnable; //横线是否显示
-    private int mLineHorizontalColor; //横线的颜色
-    private float mLineHorizontalHeight; //横线的高度
-
-    private boolean isPointerLineEnable; //指针是否显示
-    private boolean isPointerLineTriangleEnable; //指针顶部倒三角是否显示
-    private int mPointerLineColor; //指针的颜色
-    private float mPointerLineWidth; //指针的宽度
-    private int mPointerLineTextColor; //指针值的颜色
-    private float mPinterLineTextSize; //指针值字体大小
+    private boolean isMarkLineEnable; //标线是否显示
+    private boolean isMarkLineTrayEnable; //标线顶部托盘是否显示
+    private boolean isMarkLineRetainScaleLineValueEnable; //标线值显示时，对应的刻度值是否显示
+    private int mMarkLineColor; //标线的颜色
+    private float mMarkLineWidth; //标线的宽度
+    private int mMarkLineTextColor; //标线值的颜色
+    private float mMarkLineTextSize; //标线值字体大小
 
     private int mTotalLine; //刻度线的条数
     private int mMaxOffset;
     private float mOffset;
     private int mLastX, mMove;
 
-    private Paint mLinePaint; //刻度线画笔
-    private Paint mLineTextPaint; //刻度值画笔
-    private Paint mLineHorizontalPaint; //横线画笔
-    private Paint mPinterLinePaint; //指针画笔
-    private Paint mPinterLineTextPaint; //指针值画笔
+    private Paint mBaseLinePaint; //基线画笔
+    private Paint mScaleLinePaint; //刻度线画笔
+    private Paint mScaleLineTextPaint; //刻度值画笔
+    private Paint mMarkLinePaint; //标线画笔
+    private Paint mMarkLineTextPaint; //标线值画笔
 
-    private int mMiniVelocity; //临界速度
     private Scroller mScroller;
     private VelocityTracker mVelocityTracker; //速度追踪
-
-    private List<String> mScaleValues; //全部刻度值
+    private int mMiniVelocity; //临界速度
 
     private OnScaleChangeListener mListener;
+    private List<String> mScaleValues; //全部刻度值
 
     public QScaleView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -75,42 +75,43 @@ public class QScaleView extends View {
     protected void init(Context context, AttributeSet attrs) {
         TypedArray typedArray = context.obtainStyledAttributes(attrs, R.styleable.ScaleView);
         try {
-            mLineMarginBottom = typedArray.getDimension(R.styleable.ScaleView_lineMarginBottom, 0);
+            isBaseLineEnable = typedArray.getBoolean(R.styleable.ScaleView_baseLineEnable, true);
+            mBaseLineColor = typedArray.getColor(R.styleable.ScaleView_baseLineColor, Color.parseColor("#FFCFCFCF"));
+            mBaseLineHeight = typedArray.getDimension(R.styleable.ScaleView_baseLineHeight, 1);
+            mBaseLineMarginBottom = typedArray.getDimension(R.styleable.ScaleView_baseLineMarginBottom, 0);
 
-            mLineColor = typedArray.getColor(R.styleable.ScaleView_lineColor, Color.parseColor("#FFCFCFCF"));
-            mLineWidth = typedArray.getDimension(R.styleable.ScaleView_lineWidth, 1);
-            mLineSpaceWidth = typedArray.getDimension(R.styleable.ScaleView_lineSpaceWidth, 10);
-            mLineTextColor = typedArray.getColor(R.styleable.ScaleView_lineTextColor, Color.parseColor("#FFCFCFCF"));
-            mLineTextSize = typedArray.getDimension(R.styleable.ScaleView_lineTextSize, 18);
+            isScaleLineExtendEnable = typedArray.getBoolean(R.styleable.ScaleView_scaleLineExtendEnable, false);
+            mScaleLineColor = typedArray.getColor(R.styleable.ScaleView_scaleLineColor, Color.parseColor("#FFCFCFCF"));
+            mScaleLineWidth = typedArray.getDimension(R.styleable.ScaleView_scaleLineWidth, 1);
+            mScaleLineSpaceWidth = typedArray.getDimension(R.styleable.ScaleView_scaleLineSpaceWidth, 10);
+            mScaleLineTextColor = typedArray.getColor(R.styleable.ScaleView_scaleLineTextColor, Color.parseColor("#FFCFCFCF"));
+            mScaleLineTextSize = typedArray.getDimension(R.styleable.ScaleView_scaleLineTextSize, 18);
 
-            isLineHorizontalEnable = typedArray.getBoolean(R.styleable.ScaleView_lineHorizontalEnable, true);
-            mLineHorizontalColor = typedArray.getColor(R.styleable.ScaleView_lineHorizontalColor, Color.parseColor("#FFCFCFCF"));
-            mLineHorizontalHeight = typedArray.getDimension(R.styleable.ScaleView_lineHorizontalHeight, 1);
+            isMarkLineEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineEnable, true);
+            isMarkLineTrayEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineTrayEnable, true);
+            isMarkLineRetainScaleLineValueEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineRetainScaleLineValueEnable, true);
+            mMarkLineColor = typedArray.getColor(R.styleable.ScaleView_markLineColor, Color.parseColor("#FFF87D2F"));
+            mMarkLineWidth = typedArray.getDimension(R.styleable.ScaleView_markLineWidth, 1);
+            mMarkLineTextColor = typedArray.getColor(R.styleable.ScaleView_markLineTextColor, Color.parseColor("#FFF87D2F"));
+            mMarkLineTextSize = typedArray.getDimension(R.styleable.ScaleView_markLineTextSize, 40);
 
-            isPointerLineEnable = typedArray.getBoolean(R.styleable.ScaleView_pointerLineEnable, true);
-            isPointerLineTriangleEnable = typedArray.getBoolean(R.styleable.ScaleView_pointerLineTriangleEnable, true);
-            mPointerLineColor = typedArray.getColor(R.styleable.ScaleView_pointerLineColor, Color.parseColor("#FFF87D2F"));
-            mPointerLineWidth = typedArray.getDimension(R.styleable.ScaleView_pointerLineWidth, 1);
-            mPointerLineTextColor = typedArray.getColor(R.styleable.ScaleView_pointerLineTextColor, Color.parseColor("#FFF87D2F"));
-            mPinterLineTextSize = typedArray.getDimension(R.styleable.ScaleView_pointerLineTextSize, 40);
+            mBaseLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            mBaseLinePaint.setStrokeWidth(mBaseLineHeight / 2);
+            mBaseLinePaint.setColor(mBaseLineColor);
 
-            mLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            mLinePaint.setStrokeWidth(mLineWidth / 2);
-            mLinePaint.setColor(mLineColor);
-            mLineTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            mLineTextPaint.setTextSize(mLineTextSize);
-            mLineTextPaint.setColor(mLineTextColor);
+            mScaleLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            mScaleLinePaint.setStrokeWidth(mScaleLineWidth / 2);
+            mScaleLinePaint.setColor(mScaleLineColor);
+            mScaleLineTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            mScaleLineTextPaint.setTextSize(mScaleLineTextSize);
+            mScaleLineTextPaint.setColor(mScaleLineTextColor);
 
-            mLineHorizontalPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            mLineHorizontalPaint.setStrokeWidth(mLineHorizontalHeight / 2);
-            mLineHorizontalPaint.setColor(mLineHorizontalColor);
-
-            mPinterLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            mPinterLinePaint.setStrokeWidth(mPointerLineWidth / 2);
-            mPinterLinePaint.setColor(mPointerLineColor);
-            mPinterLineTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            mPinterLineTextPaint.setTextSize(mPinterLineTextSize);
-            mPinterLineTextPaint.setColor(mPointerLineTextColor);
+            mMarkLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            mMarkLinePaint.setStrokeWidth(mMarkLineWidth / 2);
+            mMarkLinePaint.setColor(mMarkLineColor);
+            mMarkLineTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            mMarkLineTextPaint.setTextSize(mMarkLineTextSize);
+            mMarkLineTextPaint.setColor(mMarkLineTextColor);
 
             mScroller = new Scroller(context);
             mMiniVelocity = ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity();
@@ -138,8 +139,8 @@ public class QScaleView extends View {
         float per = (mMaxValue - mMiniValue) / (mTotalLine - 1);
         this.mPerValue = (int) (per * 10.0f);
 
-        mMaxOffset = (int) (-(mTotalLine - 1) * mLineSpaceWidth);
-        mOffset = (mMiniValue - mSelectorValue) / mPerValue * mLineSpaceWidth * 10;
+        mMaxOffset = (int) (-(mTotalLine - 1) * mScaleLineSpaceWidth);
+        mOffset = (mMiniValue - mSelectorValue) / mPerValue * mScaleLineSpaceWidth * 10;
 
         invalidate();
     }
@@ -163,21 +164,21 @@ public class QScaleView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        drawHorizontalLine(canvas);
-        drawVerticalLineScale(canvas);
-        drawScalePointer(canvas);
+        drawBaseLine(canvas);
+        drawScaleLines(canvas);
+        drawMarkLine(canvas);
     }
 
     /**
-     * 画底部的横线
+     * 画基线
      *
      * @param canvas
      */
-    private void drawHorizontalLine(Canvas canvas) {
-        if (!isLineHorizontalEnable) {
+    private void drawBaseLine(Canvas canvas) {
+        if (!isBaseLineEnable) {
             return;
         }
-        canvas.drawLine(0, mScaleViewHeight - mLineMarginBottom, mScaleViewWidth, mScaleViewHeight - mLineMarginBottom, mLineHorizontalPaint);
+        canvas.drawLine(0, mScaleViewHeight - mBaseLineMarginBottom, mScaleViewWidth, mScaleViewHeight - mBaseLineMarginBottom, mBaseLinePaint);
     }
 
     /**
@@ -185,88 +186,62 @@ public class QScaleView extends View {
      *
      * @param canvas
      */
-    private void drawVerticalLineScale(Canvas canvas) {
-//        int srcPointX = mScaleViewWidth / 2;
-//        for (int i = 0; i < mTotalLine; i++) {
-//            float left = srcPointX + mOffset + i * mLineSpaceWidth;
-//            if (i != mTotalLine - 1) {
-//                for (int j = 1; j < 5; j++) {
-//                    float lef = left + j * mLineSpaceWidth / 5;
-//                    canvas.drawLine(lef, (mScaleViewHeight - mLineMarginBottom) * 5 / 6, lef, mScaleViewHeight - mLineMarginBottom, mLinePaint);
-//                }
-//            }
-//            canvas.drawLine(left, (mScaleViewHeight - mLineMarginBottom) * 3 / 4, left, mScaleViewHeight - mLineMarginBottom, mLinePaint);
-//            if (left != srcPointX) {
-//                canvas.drawText(mScaleValues.get(i), left - mLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mLineMarginBottom) * 7 / 10, mLineTextPaint);
-//            }
-//        }
-
-
-//        int i = 0;
-//        int srcPointX = mScaleViewWidth / 2;
-//        for (int x = 0; x < mScaleViewWidth; x += mLineSpaceWidth / 5) {
-//            float left = srcPointX + mOffset + i * mLineSpaceWidth;
-//            if (i < mTotalLine && Math.abs(left - x) < 0.000001) {
-//                canvas.drawLine(x, (mScaleViewHeight - mLineMarginBottom) * 3 / 4, x, mScaleViewHeight - mLineMarginBottom, mLinePaint);
-//                canvas.drawText(mScaleValues.get(i), x - mLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mLineMarginBottom) * 7 / 10, mLineTextPaint);
-//                i++;
-//            } else {
-//                canvas.drawLine(x, (mScaleViewHeight - mLineMarginBottom) * 5 / 6, x, mScaleViewHeight - mLineMarginBottom, mLinePaint);
-//            }
-//        }
-
-
+    private void drawScaleLines(Canvas canvas) {
         int srcPointX = mScaleViewWidth / 2;
         float left = srcPointX + mOffset;
-        for (int i = 0; i < left; i += mLineSpaceWidth / 5) {
-            canvas.drawLine(i, (mScaleViewHeight - mLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mLineMarginBottom, mLinePaint);
+        if (isScaleLineExtendEnable) {
+            for (int i = 0; i < left; i += mScaleLineSpaceWidth / 5) {
+                canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
+            }
         }
 
         for (int i = 0; i < mTotalLine; i++) {
-            left = srcPointX + mOffset + i * mLineSpaceWidth;
+            left = srcPointX + mOffset + i * mScaleLineSpaceWidth;
             if (i != mTotalLine - 1) {
                 for (int j = 1; j < 5; j++) {
-                    float lef = left + j * mLineSpaceWidth / 5;
-                    canvas.drawLine(lef, (mScaleViewHeight - mLineMarginBottom) * 5 / 6, lef, mScaleViewHeight - mLineMarginBottom, mLinePaint);
+                    float lef = left + j * mScaleLineSpaceWidth / 5;
+                    canvas.drawLine(lef, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, lef, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
                 }
             }
-            canvas.drawLine(left, (mScaleViewHeight - mLineMarginBottom) * 3 / 4, left, mScaleViewHeight - mLineMarginBottom, mLinePaint);
-            if (left != srcPointX) {
-                canvas.drawText(mScaleValues.get(i), left - mLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mLineMarginBottom) * 7 / 10, mLineTextPaint);
+            canvas.drawLine(left, (mScaleViewHeight - mBaseLineMarginBottom) * 3 / 4, left, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
+            if (left != srcPointX || isMarkLineRetainScaleLineValueEnable) {
+                canvas.drawText(mScaleValues.get(i), left - mScaleLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mBaseLineMarginBottom) * 7 / 10, mScaleLineTextPaint);
             }
         }
 
-        for (int i = (int) left; i < mScaleViewWidth; i += mLineSpaceWidth / 5) {
-            canvas.drawLine(i, (mScaleViewHeight - mLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mLineMarginBottom, mLinePaint);
+        if (isScaleLineExtendEnable) {
+            for (int i = (int) left; i < mScaleViewWidth; i += mScaleLineSpaceWidth / 5) {
+                canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
+            }
         }
     }
 
     /**
-     * 画刻度指针及刻度值
+     * 画标线及标线值
      *
      * @param canvas
      */
-    private void drawScalePointer(Canvas canvas) {
+    private void drawMarkLine(Canvas canvas) {
         String value = String.valueOf(mSelectorValue);
-        if (!isPointerLineEnable || TextUtils.isEmpty(value)) {
+        if (!isMarkLineEnable || TextUtils.isEmpty(value)) {
             return;
         }
 
         if (value.contains(".")) {
             value = value.split("\\.")[0];
         }
-        canvas.drawText(value, mScaleViewWidth / 2 - mPinterLineTextPaint.measureText(value) / 2, mScaleViewHeight / 5, mPinterLineTextPaint);
+        canvas.drawText(value, mScaleViewWidth / 2 - mMarkLineTextPaint.measureText(value) / 2, mScaleViewHeight / 5, mMarkLineTextPaint);
 
-        if (isPointerLineTriangleEnable) {
+        if (isMarkLineTrayEnable) {
             Path path = new Path();
-            path.moveTo(mScaleViewWidth / 2 - mLineSpaceWidth / 8, mScaleViewHeight / 5 + mLineSpaceWidth / 10);
-            path.lineTo(mScaleViewWidth / 2 + mLineSpaceWidth / 8, mScaleViewHeight / 5 + mLineSpaceWidth / 10);
-            path.lineTo(mScaleViewWidth / 2, mScaleViewHeight / 5 + mLineSpaceWidth / 3);
+            path.moveTo(mScaleViewWidth / 2 - mScaleLineSpaceWidth / 8, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10);
+            path.lineTo(mScaleViewWidth / 2 + mScaleLineSpaceWidth / 8, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10);
+            path.lineTo(mScaleViewWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 3);
             path.close();
-            canvas.drawPath(path, mPinterLinePaint);
+            canvas.drawPath(path, mMarkLinePaint);
         }
 
-        canvas.drawLine(mScaleViewWidth / 2, mScaleViewHeight / 5 + mLineSpaceWidth / 10, mScaleViewWidth / 2, mScaleViewHeight, mPinterLinePaint);
+        canvas.drawLine(mScaleViewWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mScaleViewWidth / 2, mScaleViewHeight, mMarkLinePaint);
     }
 
     @Override
@@ -311,7 +286,7 @@ public class QScaleView extends View {
             mMove = 0;
             mScroller.forceFinished(true);
         }
-        mSelectorValue = mMiniValue + Math.round(Math.abs(mOffset) * 1.0f / mLineSpaceWidth) * mPerValue / 10.0f;
+        mSelectorValue = mMiniValue + Math.round(Math.abs(mOffset) * 1.0f / mScaleLineSpaceWidth) * mPerValue / 10.0f;
 
         notifyValueChange();
         postInvalidate();
@@ -328,8 +303,8 @@ public class QScaleView extends View {
         mLastX = 0;
         mMove = 0;
 
-        mSelectorValue = mMiniValue + Math.round(Math.abs(mOffset) * 1.0f / mLineSpaceWidth) * mPerValue / 10.0f;
-        mOffset = (mMiniValue - mSelectorValue) * 10.0f / mPerValue * mLineSpaceWidth;
+        mSelectorValue = mMiniValue + Math.round(Math.abs(mOffset) * 1.0f / mScaleLineSpaceWidth) * mPerValue / 10.0f;
+        mOffset = (mMiniValue - mSelectorValue) * 10.0f / mPerValue * mScaleLineSpaceWidth;
 
         notifyValueChange();
         postInvalidate();
