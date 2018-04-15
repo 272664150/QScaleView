@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.support.annotation.Nullable;
@@ -38,29 +39,29 @@ public class QScaleView extends View {
     private int mScaleLineSubSpaceCount; //刻度线间的子区间数
 
     private boolean isMarkLineEnable; //标线是否显示
-    private boolean isMarkLineTrayEnable; //标线顶部托盘是否显示
-    private boolean isMarkLineRetainScaleLineValueEnable; //标线值显示时，对应的刻度值是否显示
     private int mMarkLineColor; //标线的颜色
     private float mMarkLineWidth; //标线的宽度
+    private int mMarkLineTrayColor; //标线顶部托盘的颜色
+    private int mMarkLineTrayStyle; //标线顶部托盘的样式
     private int mMarkLineTextColor; //标线值的颜色
     private float mMarkLineTextSize; //标线值字体大小
+    private boolean isMarkLineRetainScaleLineValueEnable; //显示标线值时，对应的刻度值是否隐藏
 
     private Paint mBaseLinePaint; //基线画笔
     private Paint mScaleLinePaint; //刻度线画笔
     private Paint mScaleLineTextPaint; //刻度值画笔
     private Paint mMarkLinePaint; //标线画笔
+    private Paint mMarkLineTrayPaint; //标线顶部托盘画笔
     private Paint mMarkLineTextPaint; //标线值画笔
 
     private List<String> mScaleValues; //全部的刻度值
     private int mScaleLineCount; //刻度线总条数
-    private int mLastX; //上次移动到的x坐标
-    private int mMove;
+    private int mLastX, mMove;
     private float mOffset; //偏移量
     private float mMaxOffset; //最大偏移量
     private int mSelectedPosition; //选中刻度的位置
 
     private Scroller mScroller;
-    private int mMiniVelocity; //临界速度
     private VelocityTracker mVelocityTracker; //速度追踪
 
     private OnScaleChangeListener mListener;
@@ -87,12 +88,13 @@ public class QScaleView extends View {
             mScaleLineSubSpaceCount = typedArray.getInteger(R.styleable.ScaleView_scaleLineSubSpaceCount, 5);
 
             isMarkLineEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineEnable, true);
-            isMarkLineTrayEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineTrayEnable, true);
-            isMarkLineRetainScaleLineValueEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineRetainScaleLineValueEnable, true);
             mMarkLineColor = typedArray.getColor(R.styleable.ScaleView_markLineColor, Color.parseColor("#FFF87D2F"));
             mMarkLineWidth = typedArray.getDimension(R.styleable.ScaleView_markLineWidth, 1);
+            mMarkLineTrayColor = typedArray.getColor(R.styleable.ScaleView_markLineTrayColor, Color.parseColor("#FFF87D2F"));
+            mMarkLineTrayStyle = typedArray.getInteger(R.styleable.ScaleView_markLineTrayStyle, 0);
             mMarkLineTextColor = typedArray.getColor(R.styleable.ScaleView_markLineTextColor, Color.parseColor("#FFF87D2F"));
             mMarkLineTextSize = typedArray.getDimension(R.styleable.ScaleView_markLineTextSize, 40);
+            isMarkLineRetainScaleLineValueEnable = typedArray.getBoolean(R.styleable.ScaleView_markLineRetainScaleLineValueEnable, true);
 
             mBaseLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             mBaseLinePaint.setStrokeWidth(mBaseLineHeight / 2);
@@ -108,17 +110,17 @@ public class QScaleView extends View {
             mMarkLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             mMarkLinePaint.setStrokeWidth(mMarkLineWidth / 2);
             mMarkLinePaint.setColor(mMarkLineColor);
+            mMarkLineTrayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            mMarkLineTrayPaint.setStrokeWidth(mMarkLineWidth / 4);
+            mMarkLineTrayPaint.setColor(mMarkLineTrayColor);
             mMarkLineTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             mMarkLineTextPaint.setTextSize(mMarkLineTextSize);
             mMarkLineTextPaint.setColor(mMarkLineTextColor);
-
-            mScroller = new Scroller(context);
-            mMiniVelocity = ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            //防止OOM
-            typedArray.recycle();
+            typedArray.recycle(); //防止OOM
+            mScroller = new Scroller(context);
         }
     }
 
@@ -175,11 +177,11 @@ public class QScaleView extends View {
 
         if (isScaleLineExtendEnable) {
             float offsetX = srcPointX + mOffset;
-            for (int i = (int) offsetX - 1; i > 0; i -= mScaleLineSpaceWidth / 5) {
+            for (int i = (int) offsetX - 1; i > 0; i -= mScaleLineSpaceWidth / 5) { //显示刻度尺左侧空白区域的刻度线
                 canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
             }
             offsetX = srcPointX + mOffset + (mScaleLineCount - 1) * mScaleLineSpaceWidth;
-            for (int i = (int) offsetX + 1; i < mScaleViewWidth; i += mScaleLineSpaceWidth / 5) {
+            for (int i = (int) offsetX + 1; i < mScaleViewWidth; i += mScaleLineSpaceWidth / 5) { //显示刻度尺右侧空白区域的刻度线
                 canvas.drawLine(i, (mScaleViewHeight - mBaseLineMarginBottom) * 5 / 6, i, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
             }
         }
@@ -197,15 +199,23 @@ public class QScaleView extends View {
         }
 
         canvas.drawText(value, mScaleViewWidth / 2 - mMarkLineTextPaint.measureText(value) / 2, mScaleViewHeight / 5, mMarkLineTextPaint);
-        if (isMarkLineTrayEnable) {
+
+        if (mMarkLineTrayStyle == 1) { //标线顶部托盘为实线
+            canvas.drawLine(mScaleViewWidth / 2 - mScaleLineSpaceWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mScaleViewWidth / 2 + mScaleLineSpaceWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mMarkLineTrayPaint);
+        } else if (mMarkLineTrayStyle == 2) { //标线顶部托盘为虚线
+            setLayerType(View.LAYER_TYPE_SOFTWARE, mMarkLineTrayPaint); //画虚线需要关闭view层硬件加速
+            mMarkLineTrayPaint.setPathEffect(new DashPathEffect(new float[]{13, 4}, 0));
+            canvas.drawLine(mScaleViewWidth / 2 - mScaleLineSpaceWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mScaleViewWidth / 2 + mScaleLineSpaceWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mMarkLineTrayPaint);
+        } else if (mMarkLineTrayStyle == 3) { //标线顶部托盘为倒三角
             Path path = new Path();
             path.moveTo(mScaleViewWidth / 2 - mScaleLineSpaceWidth / 8, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10);
             path.lineTo(mScaleViewWidth / 2 + mScaleLineSpaceWidth / 8, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10);
             path.lineTo(mScaleViewWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 3);
             path.close();
-            canvas.drawPath(path, mMarkLinePaint);
+            canvas.drawPath(path, mMarkLineTrayPaint);
         }
-        canvas.drawLine(mScaleViewWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 10, mScaleViewWidth / 2, mScaleViewHeight, mMarkLinePaint);
+
+        canvas.drawLine(mScaleViewWidth / 2, mScaleViewHeight / 5 + mScaleLineSpaceWidth / 7, mScaleViewWidth / 2, mScaleViewHeight, mMarkLinePaint);
     }
 
     @Override
@@ -301,7 +311,7 @@ public class QScaleView extends View {
     private void calculateVelocityTracker() {
         mVelocityTracker.computeCurrentVelocity(1000);
         float xVelocity = mVelocityTracker.getXVelocity();
-        if (Math.abs(xVelocity) > mMiniVelocity) {
+        if (Math.abs(xVelocity) > ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity()) {
             mScroller.fling(0, 0, (int) xVelocity, 0, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 0);
             mVelocityTracker.recycle();
             mVelocityTracker = null;
