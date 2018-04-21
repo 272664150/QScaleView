@@ -56,10 +56,10 @@ public class QScaleView extends View {
 
     private List<String> mScaleValues; //全部的刻度值
     private int mScaleLineCount; //刻度线总条数
-    private int mLastX, mMove;
+    private int mSelectedPosition; //选中刻度的位置
     private float mOffset; //偏移量
     private float mMaxOffset; //最大偏移量
-    private int mSelectedPosition; //选中刻度的位置
+    private int mLastX, mDeltaX, mLastY, mDeltaY;
 
     private Scroller mScroller;
     private VelocityTracker mVelocityTracker; //速度追踪
@@ -225,12 +225,41 @@ public class QScaleView extends View {
             if (mScroller.getCurrX() == mScroller.getFinalX()) {
                 moveEnd();
             } else {
-                int xPosition = mScroller.getCurrX();
-                mMove = (mLastX - xPosition);
+                int x = mScroller.getCurrX();
+                mDeltaX = mLastX - x;
                 moving();
-                mLastX = xPosition;
+                mLastX = x;
             }
         }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        int x = (int) event.getX();
+        int y = (int) event.getY();
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                getParent().requestDisallowInterceptTouchEvent(true);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                mDeltaX = mLastX - x;
+                mDeltaY = mLastY - y;
+                //当触摸scaleView在竖直方向滑动时，为了响应、跟随父view一起滑动，所以在 Math.abs(deltaX) < Math.abs(deltaY) / 5 的小范围内，把事件交给父view处理
+                if (Math.abs(mDeltaX) < Math.abs(mDeltaY) / 5) {
+                    getParent().requestDisallowInterceptTouchEvent(false);
+                } else {
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                getParent().requestDisallowInterceptTouchEvent(false);
+                break;
+        }
+        mLastY = y;
+
+        return super.dispatchTouchEvent(event);
     }
 
     @Override
@@ -240,23 +269,24 @@ public class QScaleView extends View {
         }
         mVelocityTracker.addMovement(event);
 
-        int xPosition = (int) event.getX();
+        int x = (int) event.getX();
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 mScroller.forceFinished(true);
-                mLastX = xPosition;
-                mMove = 0;
+                mLastX = x;
+                mDeltaX = 0;
                 break;
             case MotionEvent.ACTION_MOVE:
-                mMove = (mLastX - xPosition);
                 moving();
-                mLastX = xPosition;
+                mLastX = x;
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 moveEnd();
                 calculateVelocityTracker();
-                return false;
+                mLastX = 0;
+                mDeltaX = 0;
+                break;
             default:
                 break;
         }
@@ -264,16 +294,17 @@ public class QScaleView extends View {
     }
 
     private void moving() {
-        mOffset -= mMove;
+        mOffset -= mDeltaX;
         if (mOffset <= mMaxOffset) {
             mOffset = mMaxOffset;
-            mMove = 0;
+            mDeltaX = 0;
             mScroller.forceFinished(true);
         } else if (mOffset >= 0) {
             mOffset = 0;
-            mMove = 0;
+            mDeltaX = 0;
             mScroller.forceFinished(true);
         }
+
         mSelectedPosition = Math.round(Math.abs(mOffset) / mScaleLineSpaceWidth);
 
         notifyScaleChange();
@@ -281,15 +312,12 @@ public class QScaleView extends View {
     }
 
     private void moveEnd() {
-        mOffset -= mMove;
+        mOffset -= mDeltaX;
         if (mOffset <= mMaxOffset) {
             mOffset = mMaxOffset;
         } else if (mOffset >= 0) {
             mOffset = 0;
         }
-
-        mLastX = 0;
-        mMove = 0;
 
         mSelectedPosition = Math.round(Math.abs(mOffset) / mScaleLineSpaceWidth);
         mOffset = -mSelectedPosition * mScaleLineSpaceWidth;
@@ -329,7 +357,6 @@ public class QScaleView extends View {
             if (TextUtils.isEmpty(value)) {
                 return "";
             }
-
             if (value.contains(".")) {
                 value = value.split("\\.")[0];
             }
