@@ -170,7 +170,7 @@ public class QScaleView extends View {
                 }
             }
             canvas.drawLine(offsetX, (mScaleViewHeight - mBaseLineMarginBottom) * 3 / 4, offsetX, mScaleViewHeight - mBaseLineMarginBottom, mScaleLinePaint);
-            if (offsetX != srcPointX || isMarkLineRetainScaleLineValueEnable) {
+            if (Math.abs(offsetX - srcPointX) >= mScaleLineSpaceWidth / mScaleLineSubSpaceCount || isMarkLineRetainScaleLineValueEnable) {
                 canvas.drawText(mScaleValues.get(i), offsetX - mScaleLineTextPaint.measureText(mScaleValues.get(i)) / 2, (mScaleViewHeight - mBaseLineMarginBottom) * 7 / 10, mScaleLineTextPaint);
             }
         }
@@ -224,6 +224,8 @@ public class QScaleView extends View {
         if (mScroller.computeScrollOffset()) {
             if (mScroller.getCurrX() == mScroller.getFinalX()) {
                 moveEnd();
+                mLastX = 0;
+                mDeltaX = 0;
             } else {
                 int x = mScroller.getCurrX();
                 mDeltaX = mLastX - x;
@@ -241,6 +243,7 @@ public class QScaleView extends View {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 getParent().requestDisallowInterceptTouchEvent(true);
+                mDeltaY = 0;
                 break;
             case MotionEvent.ACTION_MOVE:
                 mDeltaX = mLastX - x;
